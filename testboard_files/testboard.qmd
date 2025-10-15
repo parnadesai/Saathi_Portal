@@ -1,0 +1,91 @@
+---
+title: "Saathi Visual Dashboard"
+format: dashboard
+echo: false
+---
+
+```{python}
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Load and clean the quarterly data
+df = pd.read_csv("quarterly.csv")
+df.columns = df.columns.str.strip()
+df_long = df.melt(
+    id_vars="Category",
+    value_vars=["Quarter:1", "Quarter:2", "Quarter:3", "Quarter:4"],
+    var_name="Quarter", value_name="Value"
+)
+df_long["Quarter"] = df_long["Quarter"].str.replace("Quarter:", "Q")
+
+# Load the new dataset for the map
+df1 = pd.read_csv("seedmap.csv")
+df1.columns = df1.columns.str.strip()
+```
+
+## Map Visualization
+
+```{python}
+import folium
+from folium.plugins import MarkerCluster
+from IPython.display import display
+
+# Check for required columns
+required_cols = {'Latitude', 'Longitude'}
+if required_cols.issubset(df1.columns):
+    m = folium.Map(location=[df1['Latitude'].mean(), df1['Longitude'].mean()], zoom_start=6)
+    marker_cluster = MarkerCluster().add_to(m)
+
+    for idx, row in df1.iterrows():
+        folium.Marker(
+            location=[row['Latitude'], row['Longitude']],
+            popup=str(row.get('Label', ''))
+        ).add_to(marker_cluster)
+    display(m)
+else:
+    print("seedmap.csv must have 'Latitude' and 'Longitude' columns.")
+```
+
+::: {layout-ncol=2}
+
+::: {.column width="50%"}
+#### Bar Plot: Value by Year and Quarter
+
+```{python}
+plt.figure(figsize=(10, 4))
+sns.barplot(data=df_long, x="Category", y="Value", hue="Quarter")
+plt.title("Quarterly Value by Year")
+plt.xlabel("Year")
+plt.ylabel("Value")
+plt.tight_layout()
+plt.show()
+```
+
+#### Box Plot: Distribution by Quarter
+
+```{python}
+plt.figure(figsize=(10, 4))
+sns.boxplot(data=df_long, x="Quarter", y="Value")
+plt.title("Value Distribution by Quarter")
+plt.xlabel("Quarter")
+plt.ylabel("Value")
+plt.tight_layout()
+plt.show()
+```
+:::
+
+::: {.column width="50%"}
+#### Line Plot: Quarterly Value Over Years
+
+```{python}
+plt.figure(figsize=(10, 8))
+sns.lineplot(data=df_long, x="Quarter", y="Value", hue="Category", marker="o")
+plt.title("Quarterly Value Over Years")
+plt.xlabel("Quarter")
+plt.ylabel("Value")
+plt.legend(title="Year")
+plt.tight_layout()
+plt.show()
+```
+:::
